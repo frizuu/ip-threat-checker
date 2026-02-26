@@ -25,6 +25,28 @@ class Database:
     def init_db(self):
         conn = self.get_connection()
         cursor = conn.cursor()
+            # ==========================================
+    # SEARCH HISTORY BY IP
+    # ==========================================
+    def search_ip(self, keyword: str, limit=100, offset=0) -> list:
+
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT *
+            FROM scan_history
+            WHERE ip_address LIKE ?
+            ORDER BY scan_date DESC
+            LIMIT ? OFFSET ?
+        ''', (f"%{keyword}%", limit, offset))
+
+        rows = [dict(row) for row in cursor.fetchall()]
+
+        conn.close()
+        return rows
+
+    
 
         # ==============================
         # MAIN TABLE
@@ -202,6 +224,21 @@ class Database:
 
         conn.close()
         return rows
+    
+        # ==========================================
+    # CLEAR ALL HISTORY
+    # ==========================================
+    def clear_history(self):
+
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("DELETE FROM scan_details")
+        cursor.execute("DELETE FROM scan_history")
+
+        conn.commit()
+        conn.close()
+        
     # ==========================================
     # STATISTICS (Dashboard)
     # ==========================================
