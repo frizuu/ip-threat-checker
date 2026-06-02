@@ -220,15 +220,12 @@ class VirusTotalClient:
         Kriteria:
         - HIGH    : malicious >= 5
         - MEDIUM  : malicious >= 1 atau suspicious >= 3
-        - LOW     : suspicious >= 1
         - SAFE    : malicious = 0 dan suspicious = 0
         """
         if malicious >= Config.RISK_HIGH_THRESHOLD:
             return 'HIGH'
         elif malicious >= Config.RISK_MEDIUM_THRESHOLD or suspicious >= 3:
             return 'MEDIUM'
-        elif suspicious >= 1:
-            return 'LOW'
         else:
             return 'SAFE'
 

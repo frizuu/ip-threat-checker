@@ -1,7 +1,3 @@
-"""
-abuseipdb_client.py - Integrasi AbuseIPDB API
-"""
-
 import requests
 from config import Config
 

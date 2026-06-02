@@ -25,29 +25,7 @@ class Database:
     def init_db(self):
         conn = self.get_connection()
         cursor = conn.cursor()
-            # ==========================================
-    # SEARCH HISTORY BY IP
-    # ==========================================
-    def search_ip(self, keyword: str, limit=100, offset=0) -> list:
-
-        conn = self.get_connection()
-        cursor = conn.cursor()
-
-        cursor.execute('''
-            SELECT *
-            FROM scan_history
-            WHERE ip_address LIKE ?
-            ORDER BY scan_date DESC
-            LIMIT ? OFFSET ?
-        ''', (f"%{keyword}%", limit, offset))
-
-        rows = [dict(row) for row in cursor.fetchall()]
-
-        conn.close()
-        return rows
-
     
-
         # ==============================
         # MAIN TABLE
         # ==============================
@@ -226,6 +204,26 @@ class Database:
         return rows
     
         # ==========================================
+    # SEARCH HISTORY BY IP
+    # ==========================================
+    def search_ip(self, keyword: str, limit=100, offset=0) -> list:
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT *
+            FROM scan_history
+            WHERE ip_address LIKE ?
+            ORDER BY scan_date DESC
+            LIMIT ? OFFSET ?
+        ''', (f"%{keyword}%", limit, offset))
+
+        rows = [dict(row) for row in cursor.fetchall()]
+
+        conn.close()
+        return rows
+
+    # ==========================================
     # CLEAR ALL HISTORY
     # ==========================================
     def clear_history(self):
@@ -273,7 +271,6 @@ class Database:
 
         stats['high_risk'] = risk_counts.get('HIGH', 0)
         stats['medium_risk'] = risk_counts.get('MEDIUM', 0)
-        stats['low_risk'] = risk_counts.get('LOW', 0)
         stats['safe'] = risk_counts.get('SAFE', 0)
 
         # Scan hari ini

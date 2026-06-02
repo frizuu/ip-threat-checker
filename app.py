@@ -41,16 +41,43 @@ def correlate_threat(vt_result, abuse_result):
     final_score = vt_score + (abuse_score // 10)
 
     # Tentukan risk level
-    if final_score >= 15:
+    if final_score > 4:
         risk_level = "HIGH"
-    elif final_score >= 5:
+    elif final_score >= 3:
         risk_level = "MEDIUM"
-    elif final_score > 0:
-        risk_level = "LOW"
     else:
         risk_level = "SAFE"
 
     return final_score, risk_level
+
+
+def apply_multi_source_result(vt_result, abuse_result, scan_type):
+    """
+    Standarisasi hasil VirusTotal + AbuseIPDB.
+    Rumus korelasi mengikuti single check sebagai acuan utama.
+    """
+    if abuse_result.get("success"):
+        vt_result["abuse_score"] = abuse_result.get("abuse_score", 0)
+        vt_result["abuse_reports"] = abuse_result.get("total_reports", 0)
+    else:
+        vt_result["abuse_score"] = 0
+        vt_result["abuse_reports"] = 0
+
+    normalized_abuse_result = {
+        "abuse_score": vt_result["abuse_score"]
+    }
+    final_score, risk_level = correlate_threat(
+        vt_result,
+        normalized_abuse_result
+    )
+
+    vt_result["final_score"] = final_score
+    vt_result["risk_level"] = risk_level
+    vt_result["scan_type"] = scan_type
+    vt_result["source_vt"] = vt_result.get("success", False)
+    vt_result["source_abuse"] = abuse_result.get("success", False)
+
+    return vt_result
 
 # ==========================================
 # ROUTES - HALAMAN WEB
@@ -96,38 +123,11 @@ def single_check():
                 # ===============================
                 abuse_result = abuse.check_ip(ip_input)
 
-                if abuse_result.get("success"):
-                    vt_result["abuse_score"] = abuse_result.get("abuse_score", 0)
-                    vt_result["abuse_reports"] = abuse_result.get("total_reports", 0)
-                else:
-                    vt_result["abuse_score"] = 0
-                    vt_result["abuse_reports"] = 0
-
-                # ===============================
-                # 3️⃣ CORRELATION ENGINE
-                # ===============================
-                vt_score = (vt_result.get("malicious", 0) * 3) + \
-                        (vt_result.get("suspicious", 0) * 2)
-
-                abuse_score = vt_result["abuse_score"]
-
-                final_score = vt_score + (abuse_score // 10)
-
-                # Risk classification
-                if final_score >= 15:
-                    risk_level = "HIGH"
-                elif final_score >= 5:
-                    risk_level = "MEDIUM"
-                elif final_score > 0:
-                    risk_level = "LOW"
-                else:
-                    risk_level = "SAFE"
-
-                vt_result["final_score"] = final_score
-                vt_result["risk_level"] = risk_level
-                vt_result["scan_type"] = "single"
-                vt_result["source_vt"] = vt_result.get("success", False)
-                vt_result["source_abuse"] = abuse_result.get("success", False)
+                vt_result = apply_multi_source_result(
+                    vt_result,
+                    abuse_result,
+                    "single"
+                )
 
                 # ===============================
                 # SAVE TO DATABASE
@@ -185,13 +185,13 @@ def bulk_check():
             valid_ips = [p for p in parsed_ips if p['valid']]
             invalid_ips = [p for p in parsed_ips if not p['valid']]
 
-        for inv in invalid_ips:
+            for inv in invalid_ips:
                 errors.append(f"{inv['ip']}: {inv['message']}")
 
             # ===============================
             # PROCESS VALID IPS
             # ===============================
-        for ip_data in valid_ips:
+            for ip_data in valid_ips:
 
                 ip_address = ip_data['ip']
 
@@ -206,36 +206,11 @@ def bulk_check():
                 # ---- 2️⃣ AbuseIPDB ----
                 abuse_result = abuse.check_ip(ip_address)
 
-                if abuse_result.get("success"):
-                    vt_result["abuse_score"] = abuse_result.get("abuse_score", 0)
-                    vt_result["abuse_reports"] = abuse_result.get("total_reports", 0)
-                else:
-                    vt_result["abuse_score"] = 0
-                    vt_result["abuse_reports"] = 0
-
-                # ---- 3️⃣ Correlation Engine ----
-                vt_score = (vt_result.get("malicious", 0) * 3) + \
-                        (vt_result.get("suspicious", 0) * 2)
-
-                abuse_score = vt_result["abuse_score"]
-
-                final_score = vt_score + (abuse_score // 10)
-
-                # Risk classification
-                if final_score >= 15:
-                    risk_level = "HIGH"
-                elif final_score >= 5:
-                    risk_level = "MEDIUM"
-                elif final_score > 0:
-                    risk_level = "LOW"
-                else:
-                    risk_level = "SAFE"
-
-                vt_result["final_score"] = final_score
-                vt_result["risk_level"] = risk_level
-                vt_result["scan_type"] = "bulk"
-                vt_result["source_vt"] = vt_result.get("success", False)
-                vt_result["source_abuse"] = abuse_result.get("success", False)
+                vt_result = apply_multi_source_result(
+                    vt_result,
+                    abuse_result,
+                    "bulk"
+                )
 
                 # ===============================
                 # SAVE TO DATABASE
@@ -246,7 +221,7 @@ def bulk_check():
                 results.append(vt_result)
 
         if results:
-                flash(f'{len(results)} IP berhasil dicek (Multi-Source Mode)!', 'success')
+            flash(f'{len(results)} IP berhasil dicek (Multi-Source Mode)!', 'success')
 
     return render_template(
         'bulk_check.html',
@@ -296,7 +271,6 @@ def export_history():
     total_scans = len(scans)
     high = sum(1 for s in scans if s["risk_level"] == "HIGH")
     medium = sum(1 for s in scans if s["risk_level"] == "MEDIUM")
-    low = sum(1 for s in scans if s["risk_level"] == "LOW")
     safe = sum(1 for s in scans if s["risk_level"] == "SAFE")
 
     writer.writerow(["IP Threat Intelligence Report"])
@@ -305,7 +279,6 @@ def export_history():
     writer.writerow(["Total Scans:", total_scans])
     writer.writerow(["High Risk:", high])
     writer.writerow(["Medium Risk:", medium])
-    writer.writerow(["Low Risk:", low])
     writer.writerow(["Safe:", safe])
     writer.writerow([])
     writer.writerow(["=" * 80])
@@ -409,7 +382,12 @@ def api_check_ip():
     result = vt.check_ip(ip)
 
     if result['success']:
-        result['scan_type'] = 'api'
+        abuse_result = abuse.check_ip(ip)
+        result = apply_multi_source_result(
+            result,
+            abuse_result,
+            "api"
+        )
         scan_id = db.save_scan(result)
         result['scan_id'] = scan_id
         # Hapus raw_response dari API response (terlalu besar)
@@ -448,7 +426,6 @@ def risk_color_filter(risk_level):
     colors = {
         'HIGH': 'danger',
         'MEDIUM': 'warning',
-        'LOW': 'info',
         'SAFE': 'success',
         'UNKNOWN': 'secondary'
     }
@@ -461,7 +438,6 @@ def risk_icon_filter(risk_level):
     icons = {
         'HIGH': 'bi-exclamation-triangle-fill',
         'MEDIUM': 'bi-exclamation-circle-fill',
-        'LOW': 'bi-info-circle-fill',
         'SAFE': 'bi-shield-check',
         'UNKNOWN': 'bi-question-circle'
     }

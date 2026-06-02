@@ -172,22 +172,17 @@
         <div class="card bg-light border-0">
             <div class="card-body">
                 <div class="row text-center">
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <i class="bi bi-shield-check display-6 text-success"></i>
                         <h6 class="mt-2">SAFE</h6>
                         <small class="text-muted">0 vendor mendeteksi ancaman</small>
                     </div>
-                    <div class="col-md-3">
-                        <i class="bi bi-info-circle display-6 text-info"></i>
-                        <h6 class="mt-2">LOW</h6>
-                        <small class="text-muted">1+ vendor curiga (suspicious)</small>
-                    </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <i class="bi bi-exclamation-circle display-6 text-warning"></i>
                         <h6 class="mt-2">MEDIUM</h6>
                         <small class="text-muted">1-4 vendor deteksi malicious</small>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <i class="bi bi-exclamation-triangle display-6 text-danger"></i>
                         <h6 class="mt-2">HIGH</h6>
                         <small class="text-muted">5+ vendor deteksi malicious</small>
@@ -223,7 +218,7 @@ document.getElementById('quickCheckForm').addEventListener('submit', async funct
         const data = await response.json();
 
         if (data.success) {
-            const riskColors = {HIGH:'danger', MEDIUM:'warning', LOW:'info', SAFE:'success'};
+            const riskColors = {HIGH:'danger', MEDIUM:'warning', SAFE:'success'};
             const color = riskColors[data.risk_level] || 'secondary';
 
             resultDiv.innerHTML = `
